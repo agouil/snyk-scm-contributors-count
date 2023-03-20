@@ -7,7 +7,8 @@ import { access } from 'fs/promises';
 import { constants } from 'fs';
 
 const debug = debugLib('snyk:azure-devops-count');
-const azureDefaultUrls = 'https://dev.azure.com,https://visualstudio.com';
+const azureDefaultUrl = 'https://dev.azure.com/';
+const azureAdditionalUrl = 'https://visualstudio.com';
 
 const d = new Date();
 d.setDate(d.getDate() - 90);
@@ -25,6 +26,11 @@ export const builder = {
     required: true,
     default: undefined,
     desc: 'Your Org name in Azure Devops e.g. https://dev.azure.com/{OrgName}',
+  },
+  url: {
+    required: false,
+    default: azureDefaultUrl,
+    desc: '[Optional] Custom Azure Devops URL',
   },
   projectKeys: {
     required: false,
@@ -78,7 +84,7 @@ class AzureDevops extends SCMHandlerClass {
       debug(
         'ℹ️  Options: ' +
           JSON.stringify(
-            `Org name: ${this.azureConnInfo.OrgName}, Project Key: ${this.azureConnInfo.projectKeys}, Repo: ${this.azureConnInfo.repo}`,
+            `Url: ${this.azureConnInfo.url}, Org name: ${this.azureConnInfo.OrgName}, Project Key: ${this.azureConnInfo.projectKeys}, Repo: ${this.azureConnInfo.repo}`,
           ),
       );
       contributors = await fetchAzureDevopsContributors(
@@ -100,6 +106,7 @@ class AzureDevops extends SCMHandlerClass {
 export async function handler(argv: {
   token: string;
   org: string;
+  url: string;
   projectKeys?: string;
   repo?: string;
   exclusionFilePath: string;
@@ -141,6 +148,7 @@ export async function handler(argv: {
   }
   const scmTarget: AzureDevopsTarget = {
     token: argv.token,
+    url: argv.url,
     OrgName: argv.org,
     projectKeys: argv.projectKeys?.toString().split(','),
     repo: argv.repo,
@@ -149,7 +157,7 @@ export async function handler(argv: {
   const azureDevopsTask = new AzureDevops(scmTarget);
 
   await azureDevopsTask.scmContributorCount(
-    azureDefaultUrls,
+    `${azureDefaultUrl},${azureAdditionalUrl}`,
     SourceType['azure-repos'],
     argv.exclusionFilePath,
     argv.json,

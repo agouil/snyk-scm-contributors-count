@@ -326,3 +326,9 @@ export const promptUserForDetails = async (
     }),
   );
 };
+
+export const constructUrl = (base: string, path?: string): string => {
+  if (!path) return base;
+  if (base.endsWith('/')) return `${base}${path}`;
+  return `${base}/${path}`;
+};
