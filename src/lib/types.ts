@@ -46,6 +46,7 @@ export interface BitbucketServerTarget {
 
 export interface AzureDevopsTarget {
   token: string;
+  url: string;
   OrgName: string;
   projectKeys?: string[];
   repo?: string;

@@ -7,10 +7,14 @@ import {
 } from '../types';
 import { Commits, Repo, Project } from './types';
 import { getRepoCommits, getReposPerProjects, getProjects } from './utils';
-import { createImportFile, genericRepo, genericTarget } from '../common/utils';
+import {
+  constructUrl,
+  createImportFile,
+  genericRepo,
+  genericTarget,
+} from '../common/utils';
 
 import * as debugLib from 'debug';
-const azureDefaultUrl = 'https://dev.azure.com/';
 const debug = debugLib('snyk:azure-devops-count');
 
 export const fetchAzureDevopsContributors = async (
@@ -46,7 +50,7 @@ export const fetchAzureDevopsContributors = async (
       azureInfo.projectKeys = [];
       projectList = projectList.concat(
         await fetchAzureProjects(
-          azureDefaultUrl,
+          azureInfo.url,
           azureInfo.OrgName,
           azureInfo.token,
         ),
@@ -128,7 +132,7 @@ export const fetchAzureContributorsForRepo = async (
       `Fetching single repo contributor from Azure Devops. Project ${repo.project.key} - Repo ${repo.name}\n`,
     );
     const response = await getRepoCommits(
-      azureDefaultUrl + AzureInfo.OrgName,
+      constructUrl(AzureInfo.url, AzureInfo.OrgName),
       repo.project.key,
       repo.name,
       AzureInfo.token,
@@ -218,7 +222,7 @@ export const fetchAzureReposForProjects = async (
     try {
       for (let i = 0; i < AzureInfo.projectKeys.length; i++) {
         const repos = await getReposPerProjects(
-          azureDefaultUrl + AzureInfo.OrgName,
+          constructUrl(AzureInfo.url, AzureInfo.OrgName),
           AzureInfo.projectKeys[i],
           AzureInfo.token,
         );
@@ -256,13 +260,13 @@ export const fetchAzureReposForProjects = async (
 };
 
 export const fetchAzureProjects = async (
-  azureDefaultUrl: string,
+  url: string,
   OrgName: string,
   token: string,
 ): Promise<Project[]> => {
   const projectList: Project[] = [];
   try {
-    const projects = await getProjects(azureDefaultUrl, OrgName, token);
+    const projects = await getProjects(url, OrgName, token);
     const result = await projects.text();
     const parsedResponse = JSON.parse(result).value;
     parsedResponse.map((project: { name: string; id: string }) => {

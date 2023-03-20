@@ -13,30 +13,50 @@ import { Repo } from '../../../src/lib/azure-devops/types';
 const fixturesFolderPath =
   path.resolve(__dirname, '../..') + '/fixtures/azure-devops/';
 
-beforeEach(() => {
-  return nock('https://dev.azure.com')
-    .persist()
-    .get(/.*/)
-    .reply(200, (uri) => {
-      console.log('URI = ' + uri);
-      switch (uri) {
-        case '/testOrg/testProject/_apis/git/repositories?$top=1000000&api-version=4.1':
-          return fs.readFileSync(fixturesFolderPath + 'project-repos.json');
-        case '/testOrg/5ce02f49-7e0e-4aba-9c24-3428111da778/_apis/git/repositories/testRepo1/commits?$top=1000000&searchCriteria.fromDate=2000/01/01%2012:00&api-version=4.1':
-          return fs.readFileSync(fixturesFolderPath + 'testRepo-commits.json');
-        case '/testOrg/5ce02f49-7e0e-4aba-9c24-3428111da778/_apis/git/repositories/goof.git/commits?$top=1000000&searchCriteria.fromDate=2000/01/01%2012:00&api-version=4.1':
-          return fs.readFileSync(fixturesFolderPath + 'goofRepo-commits.json');
-        case '/testOrg/_apis/projects?$top=1000000&api-version=4.1':
-          return fs.readFileSync(fixturesFolderPath + 'org-projects.json');
-        default:
-      }
-    });
-});
+describe.each([
+  {
+    name: 'Default',
+    azureUrl: 'https://dev.azure.com',
+  },
+  {
+    name: 'Self-hosted',
+    azureUrl: 'https://dev.azure.snyk.io',
+  },
+])('Testing $name Azure DevOps interaction', ({ azureUrl }) => {
+  const azureDevopsInfo: AzureDevopsTarget = {
+    token: '123',
+    url: azureUrl,
+    OrgName: 'testOrg',
+    projectKeys: ['testProject'],
+  };
 
-describe('Testing azure-devops interaction', () => {
+  beforeEach(() => {
+    return nock(azureUrl)
+      .persist()
+      .get(/.*/)
+      .reply(200, (uri) => {
+        console.log(`URL = ${azureUrl}/${uri}`);
+        switch (uri) {
+          case '/testOrg/testProject/_apis/git/repositories?$top=1000000&api-version=4.1':
+            return fs.readFileSync(fixturesFolderPath + 'project-repos.json');
+          case '/testOrg/5ce02f49-7e0e-4aba-9c24-3428111da778/_apis/git/repositories/testRepo1/commits?$top=1000000&searchCriteria.fromDate=2000/01/01%2012:00&api-version=4.1':
+            return fs.readFileSync(
+              fixturesFolderPath + 'testRepo-commits.json',
+            );
+          case '/testOrg/5ce02f49-7e0e-4aba-9c24-3428111da778/_apis/git/repositories/goof.git/commits?$top=1000000&searchCriteria.fromDate=2000/01/01%2012:00&api-version=4.1':
+            return fs.readFileSync(
+              fixturesFolderPath + 'goofRepo-commits.json',
+            );
+          case '/testOrg/_apis/projects?$top=1000000&api-version=4.1':
+            return fs.readFileSync(fixturesFolderPath + 'org-projects.json');
+          default:
+        }
+      });
+  });
+
   test('Test fetchAzureProjects', async () => {
     const projects = await azureDevops.fetchAzureProjects(
-      'https://dev.azure.com',
+      azureDevopsInfo.url,
       'testOrg',
       '123',
     );
@@ -47,11 +67,6 @@ describe('Testing azure-devops interaction', () => {
   });
 
   test('Test fetchAzureReposForProjects', async () => {
-    const azureDevopsInfo: AzureDevopsTarget = {
-      token: '123',
-      OrgName: 'testOrg',
-      projectKeys: ['testProject'],
-    };
     const repos = await azureDevops.fetchAzureReposForProjects(azureDevopsInfo);
     expect(repos).toHaveLength(2);
     expect(repos[0].name).toEqual('testRepo1');
@@ -62,11 +77,6 @@ describe('Testing azure-devops interaction', () => {
   });
 
   test('Test fetchAzureContributorsForRepo', async () => {
-    const azureDevopsInfo: AzureDevopsTarget = {
-      token: '123',
-      OrgName: 'testOrg',
-      projectKeys: ['testProject'],
-    };
     const contributorsMap: ContributorMap = new Map<string, Contributor>();
     const repo: Repo = {
       name: 'testRepo1',
@@ -93,12 +103,6 @@ describe('Testing azure-devops interaction', () => {
   });
 
   test('Test fetchAzureDevopsContributors', async () => {
-    const azureDevopsInfo: AzureDevopsTarget = {
-      token: '123',
-      OrgName: 'testOrg',
-      projectKeys: ['testProject'],
-    };
-
     const contributorsMap: ContributorMap =
       await azureDevops.fetchAzureDevopsContributors(
         azureDevopsInfo,
